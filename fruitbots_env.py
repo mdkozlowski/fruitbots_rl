@@ -12,7 +12,8 @@ class FruitbotsEnvSP(gym.Env):
 			"map_vec": spaces.Box(0, 1, (4, self.engine.map.size, self.engine.map.size)),
 			"state": spaces.Box(0, 1, shape=(4,))
 		})
-		print(self.observation_space.sample())
+		print("Started environment")
+		#print(self.observation_space.sample())
 
 	def step(self, action):
 		assert type(action) is int

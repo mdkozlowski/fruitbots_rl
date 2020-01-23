@@ -77,6 +77,15 @@ class Engine:
 		self.won = False
 		self.map = Map(5)
 
+	def get_info(self):
+		return {
+			"turn": self.turn,
+			"map": {
+				"size": self.map.size,
+			},
+			"done": self.done
+		}
+
 	def get_state_vec(self):
 		map_vec = np.zeros((4, self.map.size, self.map.size))
 		state = np.zeros(4)  # fruit, turn
