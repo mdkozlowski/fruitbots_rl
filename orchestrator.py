@@ -24,7 +24,7 @@ def launch_env():
 	env.render()
 
 	environments[env_code] = env
-	return env_code
+	return jsonify(env_code)
 
 
 if __name__ == '__main__':

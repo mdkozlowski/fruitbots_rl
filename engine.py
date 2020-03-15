@@ -7,7 +7,7 @@ FRUIT_TYPES = {
 }
 
 DEFAULT_CONFIG = {
-	"fruits_max_prop": 0.5,
+	"fruits_max_prop": 0.4,
 	"max_turns": 200,
 }
 
@@ -45,15 +45,16 @@ class Map:
 		self.size = size
 		self.fruit = []
 		self.bots = []
-		self.max_fruit = 0
 
-		self.new_map()
-
-	def new_map(self):
 		self.max_fruit = int(DEFAULT_CONFIG["fruits_max_prop"] * self.size ** 2)
+		self.fruit_assignments = None
 
+		self.gen_map()
+
+	def gen_map(self):
+		self.fruit_assignments = np.repeat(np.array([0, 1, 2]), np.ceil(self.max_fruit / 3))
 		fruit_pos = []
-		self.fruit_assignments = np.repeat(np.array([0, 1, 2]), self.max_fruit / 3)
+
 		for idx in range(self.max_fruit):
 			while True:
 				candidate = tuple(np.random.randint(0, self.size, size=2))
@@ -86,16 +87,16 @@ class Engine:
 			"done": self.done
 		}
 
-	def get_state_vec(self):
+	def get_state_vec(self, player_idx):
 		map_vec = np.zeros((4, self.map.size, self.map.size))
-		state = np.zeros(4)  # fruit, turn
+		state = np.zeros(4)  # 3 fruits, turn
 
-		bot = self.map.bots[0]
+		bot = self.map.bots[player_idx]
 		for fruit in self.map.fruit:
 			map_vec[fruit.ftype, fruit.position[0], fruit.position[1]] = 1
-		map_vec[3, bot.position[0], bot.position[1]] = 1
+		map_vec[-1, bot.position[0], bot.position[1]] = 1
 
-		state[0:3] = self.map.bots[0].owned_fruit / np.bincount(self.map.fruit_assignments)
+		state[0:len(FRUIT_TYPES)] = self.map.bots[player_idx].owned_fruit / np.bincount(self.map.fruit_assignments)
 		state[-1] = self.turn / DEFAULT_CONFIG["max_turns"]
 
 		return map_vec, state
@@ -105,29 +106,34 @@ class Engine:
 			self.done = True
 		self.turn += 1
 
-		bot_pos = self.map.bots[0].position
-		pos_delta = np.array([0, 0])
-		if action == ACTIONS["UP"]:
-			pos_delta[1] -= 1
-		elif action == ACTIONS["DOWN"]:
-			pos_delta[1] += 1
-		elif action == ACTIONS["LEFT"]:
-			pos_delta[0] -= 1
-		elif action == ACTIONS["RIGHT"]:
-			pos_delta[0] += 1
+		for player_idx in action:
+			assert type(player_idx) is int
+			assert type(action[player_idx]) is int
 
-		new_pos = bot_pos + pos_delta
-		if new_pos[0] >= self.map.size or new_pos[1] >= self.map.size or \
-				new_pos[0] < 0 or new_pos[1] < 0:
-			# invalid move
-			pass
-		else:
-			self.map.bots[0].position = new_pos
-			for fruit in self.map.fruit:
-				if np.array_equal(fruit.position, new_pos):
-					self.map.bots[0].owned_fruit[fruit.ftype] += 1
-					self.map.fruit.remove(fruit)
+			bot_pos = self.map.bots[player_idx].position
+			pos_delta = np.array([0, 0])
+			if action[player_idx] == ACTIONS["UP"]:
+				pos_delta[1] -= 1
+			elif action[player_idx] == ACTIONS["DOWN"]:
+				pos_delta[1] += 1
+			elif action[player_idx] == ACTIONS["LEFT"]:
+				pos_delta[0] -= 1
+			elif action[player_idx] == ACTIONS["RIGHT"]:
+				pos_delta[0] += 1
 
-		if len(self.map.fruit) == 0:
-			self.done = True
-			self.won = True
+			new_pos = bot_pos + pos_delta
+			if new_pos[0] >= self.map.size or new_pos[1] >= self.map.size or \
+					new_pos[0] < 0 or new_pos[1] < 0:
+				# invalid move
+				pass
+			else:
+				self.map.bots[player_idx].position = new_pos
+				for fruit in self.map.fruit:
+					if np.array_equal(fruit.position, new_pos):
+						self.map.bots[player_idx].owned_fruit[fruit.ftype] += 1
+						self.map.fruit.remove(fruit)
+
+			if len(self.map.fruit) == 0:
+				self.done = True
+				self.won = True
+				break
